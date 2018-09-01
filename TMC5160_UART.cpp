@@ -139,7 +139,8 @@ void TMC5160_UART_Generic::resetCommunication()
 {
 	//FIXME should take into account the previous baud rate !
 	// For now let's wait 1ms. The spec asks for ~75 bit times so this should be OK for baud rates > 75kbps
-	delay(1);
+	// as of now (09/2018) delay() is broken for small durations on ESP32. Use delayMicroseconds instead
+	delayMicroseconds(1000);
 
 #ifdef SERIAL_DEBUG
 	Serial.println("Resetting communication.");
