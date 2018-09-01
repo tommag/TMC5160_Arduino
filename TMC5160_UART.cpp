@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "TMC5160.h"
 
-#define SERIAL_PRINT_ERRORS
+// #define SERIAL_PRINT_ERRORS
 // #define SERIAL_DEBUG
 
 TMC5160_UART_Generic::TMC5160_UART_Generic(uint8_t slaveAddress, uint32_t fclk)
@@ -196,8 +196,6 @@ float TMC5160_UART_Generic::getWriteSuccessRate()
 
 uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 {
-	digitalWrite(14, HIGH);
-
 	uint8_t outBuffer[4], inBuffer[8];
 
 	outBuffer[0] = SYNC_BYTE;
@@ -208,17 +206,11 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 	uartFlushInput();
 
-	digitalWrite(14, LOW);
-
 	beginTransmission();
-	digitalWrite(14, HIGH);
 	uartWriteBytes(outBuffer, 4);
-	digitalWrite(14, LOW);
 	endTransmission();
 
 	_readAttemptsCounter++;
-
-	digitalWrite(14, HIGH);
 
 	unsigned long startTime = micros();
 	uint8_t rxLen = 0;
@@ -256,7 +248,6 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 		return 0xFFFFFFFF;
 	}
-	digitalWrite(14, LOW);
 
 	if (inBuffer[0] != SYNC_BYTE || inBuffer[1] != MASTER_ADDRESS || inBuffer[2] != address)
 	{
@@ -284,8 +275,6 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 	uint8_t receivedCrc = inBuffer[7];
 	computeCrc(inBuffer, 8);
-
-	digitalWrite(14, HIGH);
 
 	if (receivedCrc != inBuffer[7])
 	{
@@ -316,8 +305,6 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 	if (status != nullptr)
 		*status = SUCCESS;
-
-	digitalWrite(14, LOW);
 
 	return data;
 }
