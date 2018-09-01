@@ -348,7 +348,7 @@ protected:
  */
 class TMC5160_UART_ESP32 : public TMC5160_UART_Generic {
 public:
-	TMC5160_UART_ESP32(uart_port_t uartNum, // Serial port to use
+	TMC5160_UART_ESP32(uart_port_t uartNum = UART_NUM_1, // Serial port to use
 		uint8_t slaveAddress = 0, // TMC5160 slave address (default 0 if NAI is low, 1 if NAI is high)
 		uint32_t fclk = DEFAULT_F_CLK) :
 		TMC5160_UART_Generic(slaveAddress, fclk), _uartNum(uartNum)
