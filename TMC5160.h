@@ -239,6 +239,7 @@ public:
 	void resetCommunication(); // Reset communication with TMC5160 : pause activity on the serial bus.
 
 	void setSlaveAddress(uint8_t slaveAddress, bool NAI=true); // Set the slave address register. Take into account the TMC5160 NAI input (default to high). Range : 0 - 253 if NAI is low, 1 - 254 if NAI is high.
+	void setInternalSlaveAddress(uint8_t slaveAddress) { _slaveAddress = slaveAddress; }
 	uint8_t getSlaveAddress() { return _slaveAddress; }
 
 	void setCommunicationMode(CommunicationMode mode);
@@ -371,6 +372,7 @@ protected:
 	virtual void beginTransmission()
 	{
 		//On ESP32 delay between transmissions is taken care of as a break after writing
+		//TODO make sure that there are 12bit times between 2 transmissions
 	}
 
 	virtual void uartFlushInput()
@@ -380,6 +382,7 @@ protected:
 
 	virtual void uartWriteBytes(const uint8_t *buf, uint8_t len)
 	{
+		// uart_write_bytes(_uartNum, (char*)buf, len);
 		uart_write_bytes_with_break(_uartNum, (char*)buf, len, 1);
 	}
 
@@ -439,13 +442,14 @@ public:
 protected:
 	void beginTransmission()
 	{
-		TMC5160_UART::beginTransmission();
+		// TMC5160_UART::beginTransmission();
 		digitalWrite(_txEn, HIGH);
 	}
 
 	void endTransmission()
 	{
 		_serial->flush();
+		delayMicroseconds(20); //TODO TEMP ESP32
 		digitalWrite(_txEn, LOW);
 	}
 
