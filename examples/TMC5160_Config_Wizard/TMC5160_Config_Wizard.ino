@@ -283,7 +283,7 @@ void setup()
 
   motor.setCurrentPosition(0);
   motor.setAcceleration(800);
-  motor.setMaxSpeed(800);
+  motor.setMaxSpeed(400);
   motor.setTargetPosition(4000);
 }
 
