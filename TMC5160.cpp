@@ -338,3 +338,22 @@ void TMC5160::setEncoderLatching(bool enabled)
 
 	writeRegister(TMC5160_Reg::ENCMODE, encmode.value);
 }
+
+void TMC5160::setEncoderAllowedDeviation(int steps)
+{
+	writeRegister(TMC5160_Reg::ENC_DEVIATION, steps * _uStepCount);
+}
+
+bool TMC5160::isEncoderDeviationDetected()
+{
+	TMC5160_Reg::ENC_STATUS_Register encStatus = {0};
+	encStatus.value = readRegister(TMC5160_Reg::ENC_STATUS);
+	return isLastReadSuccessful() && encStatus.deviation_warn;
+}
+
+void TMC5160::clearEncoderDeviationFlag()
+{
+	TMC5160_Reg::ENC_STATUS_Register encStatus = {0};
+	encStatus.deviation_warn = true;
+	writeRegister(TMC5160_Reg::ENC_STATUS, encStatus.value);
+}

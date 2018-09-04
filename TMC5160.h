@@ -151,6 +151,17 @@ public:
 	 */
 	void setEncoderLatching(bool enabled);
 
+	/* Set maximum number of steps between internal position and encoder position
+	 * before triggering the deviation flag.
+	 * Set to 0 to disable. */
+	void setEncoderAllowedDeviation(int steps);
+
+	/* Check if a deviation between internal pos and encoder has been detected */
+	bool isEncoderDeviationDetected();
+
+	/* Clear encoder deviation flag (deviation condition must be handled before) */
+	void clearEncoderDeviationFlag();
+
 	//TODO end stops and stallguard config functions ?
 
 protected:
