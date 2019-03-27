@@ -105,6 +105,9 @@ public:
 	void setAccelerations(float maxAccel, float maxDecel, float startAccel, float finalDecel); // Set the ramp accelerations AMAX, DMAX, A1, D1 (steps / second^2) /!\ Do not set startAccel, finalDecel to 0 even if transitionSpeed = 0
 
 	void stop(); // Stop the current motion according to the set ramp mode and motion parameters. The max speed and start speed are set to 0 but the target position stays unchanged.
+	
+	void disable(); //Disable the driver, all bridges off
+	void enable(); //Enable the driver
 
 	//TODO chopper config functions ?
 	//TODO driver status functions (read GSTAT and DRV_STATUS and return an enum value)
@@ -174,6 +177,7 @@ private:
 	uint32_t _fclk;
 	RampMode _currentRampMode;
 	static constexpr uint16_t _uStepCount = 256; // Number of microsteps per step
+	TMC5160_Reg::CHOPCONF_Register _chopConf = { 0 }; //CHOPCONF register (saved here to be restored when disabling / enabling driver)
 
 	// Following §14.1 Real world unit conversions
 	// v[Hz] = v[5160A] * ( f CLK [Hz]/2 / 2^23 )

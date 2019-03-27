@@ -80,12 +80,11 @@ bool TMC5160::begin(PowerStageParameters &powerParams, MotorParameters &motorPar
 	writeRegister(TMC5160_Reg::PWMCONF, pwmconf.value);
 
 	// Recommended settings in quick config guide
-	TMC5160_Reg::CHOPCONF_Register chopconf = { 0 };
-	chopconf.toff = 5;
-	chopconf.tbl = 2;
-	chopconf.hstrt_tfd = 4;
-	chopconf.hend_offset = 0;
-	writeRegister(TMC5160_Reg::CHOPCONF, chopconf.value);
+	_chopConf.toff = 5;
+	_chopConf.tbl = 2;
+	_chopConf.hstrt_tfd = 4;
+	_chopConf.hend_offset = 0;
+	writeRegister(TMC5160_Reg::CHOPCONF, _chopConf.value);
 
 	// use position mode
 	setRampMode(POSITIONING_MODE);
@@ -245,6 +244,21 @@ void TMC5160::stop()
 	// §14.2.4 Early Ramp Termination option b)
 	writeRegister(TMC5160_Reg::VSTART, 0);
 	writeRegister(TMC5160_Reg::VMAX, 0);
+}
+
+void TMC5160::disable()
+{
+	_chopConf.value = readRegister(TMC5160_Reg::CHOPCONF);
+	
+	TMC5160_Reg::CHOPCONF_Register chopconf = { 0 };
+	chopconf.value = _chopConf.value;
+	chopconf.toff = 0;
+	writeRegister(TMC5160_Reg::CHOPCONF, chopconf.value);
+}
+
+void TMC5160::enable()
+{
+	writeRegister(TMC5160_Reg::CHOPCONF, _chopConf.value);
 }
 
 void TMC5160::setModeChangeSpeeds(float pwmThrs, float coolThrs, float highThrs)
