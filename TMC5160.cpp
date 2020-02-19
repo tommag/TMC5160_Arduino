@@ -248,8 +248,6 @@ void TMC5160::stop()
 
 void TMC5160::disable()
 {
-	_chopConf.value = readRegister(TMC5160_Reg::CHOPCONF);
-	
 	TMC5160_Reg::CHOPCONF_Register chopconf = { 0 };
 	chopconf.value = _chopConf.value;
 	chopconf.toff = 0;
