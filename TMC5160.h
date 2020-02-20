@@ -448,13 +448,11 @@ protected:
 	{
 		// TMC5160_UART::beginTransmission();
 		digitalWrite(_txEn, HIGH);
-		delayMicroseconds(15); //TODO TEMP ESP32
 	}
 
 	void endTransmission()
 	{
 		_serial->flush();
-		delayMicroseconds(20); //TODO TEMP ESP32
 		digitalWrite(_txEn, LOW);
 	}
 
