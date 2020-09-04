@@ -201,7 +201,10 @@ void TMC5160::setCurrentPosition(float position, bool updateEncoderPos)
 	writeRegister(TMC5160_Reg::XACTUAL, (int)(position * (float)_uStepCount));
 
 	if (updateEncoderPos)
+	{
 		writeRegister(TMC5160_Reg::X_ENC, (int)(position * (float)_uStepCount));
+		clearEncoderDeviationFlag();
+	}
 }
 
 void TMC5160::setTargetPosition(float position)
