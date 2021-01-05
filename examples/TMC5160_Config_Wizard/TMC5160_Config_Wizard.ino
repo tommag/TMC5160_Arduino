@@ -32,6 +32,9 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
 Arduino / Teensy          MAX3485                              TMC5130
                        or equivalent
 
+Tie CLK16 to GND to use the TMC5160 internal clock.
+Tie SPI_MODE to GND, SD_MODE to GND for UART mode.
+
 ///// Option 2 : SPI
 Connect the following pins to the TMC5160 : 
   MOSI (Teensy : 11)  <=> SDI
@@ -42,8 +45,10 @@ Connect the following pins to the TMC5160 :
   GND                 <=> GND
   3.3V/5V             <=> VCC_IO (depending on the processor voltage)
 
+Tie CLK16 to GND to use the TMC5160 internal clock.
+Tie SPI_MODE to VCC_IO, SD_MODE to GND for SPI mode.
 
-For both options, the TMC5160 VS pin must also be powered.
+For both options, the TMC5160 VS pin must also be powered. 
 
 Copyright (c) 2017 Tom Magnier
 

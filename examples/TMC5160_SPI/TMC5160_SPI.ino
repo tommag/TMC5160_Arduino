@@ -15,6 +15,8 @@ Connect the following lines between the microcontroller board and the TMC5160 dr
   3.3V/5V             <=> VCC_IO (depending on the processor voltage)
 
 The TMC5160 VS pin must also be powered.
+Tie CLK16 to GND to use the TMC5160 internal clock.
+Tie SPI_MODE to VCC_IO, SD_MODE to GND.
 
 Please run the Config Wizard for power stage fine tuning / motor calibration (this code uses the default parameters and auto calibration).
 
