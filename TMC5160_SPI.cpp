@@ -27,7 +27,7 @@ SOFTWARE.
 TMC5160_SPI::TMC5160_SPI( uint8_t chipSelectPin, uint32_t fclk, const SPISettings &spiSettings, SPIClass &spi )
 : TMC5160(fclk), _CS(chipSelectPin), _spiSettings(spiSettings), _spi(&spi)
 {
-
+	pinMode(chipSelectPin, OUTPUT);
 }
 
 
