@@ -3,6 +3,9 @@
 This code gives an easy way to configure the various driver setting of a Trinamic TMC5160-based driver.
 
 Hardware setup :
+
+
+///// Option 1 : UART
 A RS485 transceiver must be connected to the Serial1 pins with the TX Enable pin
 accessible to the uC
 
@@ -20,7 +23,7 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
 |      RX 0 +--------+ RO           |       |           |                 |
 |           |        |            A +-------+-----------+ SWP         NAI ++ open
 |           |    +---+ /RE          |                   |                 |
-|   TX EN 5 +----+   |            B +-------------------+ SWN             |
+|   TX EN 2 +----+   |            B +-------------------+ SWN             |
 |           |    +---+ DE           |                   |                 |
 |           |        |          GND +----+         +----+ DRV_ENN         |
 |      TX 1 +--------+ DI           |    |         |    |                 |
@@ -29,6 +32,18 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
 Arduino / Teensy          MAX3485                              TMC5130
                        or equivalent
 
+///// Option 2 : SPI
+Connect the following pins to the TMC5160 : 
+  MOSI (Teensy : 11)  <=> SDI
+  MISO (Teensy : 12)  <=> SDO
+  SCK (Teensy : 13)   <=> SCK
+  5                   <=> CSN
+  8                   <=> DRV_ENN (optional, tie to GND if not used)
+  GND                 <=> GND
+  3.3V/5V             <=> VCC_IO (depending on the processor voltage)
+
+
+For both options, the TMC5160 VS pin must also be powered.
 
 Copyright (c) 2017 Tom Magnier
 
@@ -55,12 +70,10 @@ SOFTWARE.
 #include <TMC5160.h>
 
 const uint8_t UART_TX_EN = 2;   // Differential transceiver TX enable pin
+const uint8_t SPI_CS = 5; // CS pin in SPI mode
+const uint8_t SPI_DRV_ENN = 8;  // DRV_ENN pin in SPI mode
 
-#if defined(KINETISK) && 0 //Teensty 3.x have hardware transceiver enable support.
-TMC5160_UART motor;
-#else
-TMC5160_UART_Transceiver motor;
-#endif
+TMC5160* motor;
 
 char readCommandToken(const char *tokens, int tokenCount, int defaultToken = -1)
 {
@@ -113,7 +126,7 @@ void printDriverStatus()
   //TODO inside library
 
   TMC5160_Reg::GSTAT_Register gstat = {0};
-  gstat.value = motor.readRegister(TMC5160_Reg::GSTAT);
+  gstat.value = motor->readRegister(TMC5160_Reg::GSTAT);
 
   if (gstat.uv_cp)
   {
@@ -123,7 +136,7 @@ void printDriverStatus()
   {
     Serial.print("DRV_STATUS: ");
     TMC5160_Reg::DRV_STATUS_Register drvStatus = {0};
-    drvStatus.value = motor.readRegister(TMC5160_Reg::DRV_STATUS);
+    drvStatus.value = motor->readRegister(TMC5160_Reg::DRV_STATUS);
     Serial.print(drvStatus.value, HEX);
     Serial.print(" (");
     if (drvStatus.s2vsa)
@@ -144,68 +157,111 @@ void printDriverStatus()
   }
 }
 
+void tunePowerStage(TMC5160::PowerStageParameters *powerParams);
+void getPowerStageParams(TMC5160::PowerStageParameters *powerParams);
+void tuneMotorCurrent(TMC5160::MotorParameters *motorParams);
+void tuneStealthChop(TMC5160::PowerStageParameters *powerParams, TMC5160::MotorParameters *motorParams);
+void getStealthChopParams(TMC5160::MotorParameters *motorParams);
+void startPowerStageTroubleshooting();
+
 void setup()
 {
   // init serial coms
   Serial.begin(115200);
   while(!Serial);
 
-  // Init TMC serial bus @ 500kbps
-  Serial1.begin(500000);
-  Serial1.setTimeout(2); // TMC5160 should answer back immediately when reading a register.
-
-  // status LED
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  // TMC5160 research on bus
-  //Use Serial1 (hardware UART on Feather M0/Teensy) ; address 0
-  #if defined(KINETISK) && 0
-  Serial1.transmitterEnable(UART_TX_EN);
-  motor = TMC5160_UART(Serial1, 0);
-  #else
-  motor = TMC5160_UART_Transceiver(UART_TX_EN, Serial1, 0);
-  #endif
-  motor.setCommunicationMode(TMC5160_UART::RELIABLE_MODE);
-
-  TMC5160_UART::ReadStatus readStatus;
-  TMC5160_Reg::IOIN_Register ioin = { 0 };
-
-  while (ioin.version != motor.IC_VERSION)
+  Serial.print("Select the communication interface to use ('s' for SPI, 'u' for UART)");
+  if (readCommandToken("su", 2, 1) == 's') 
   {
-    ioin.value = motor.readRegister(TMC5160_Reg::IO_INPUT_OUTPUT, &readStatus);
+    SPI.begin();
+    motor = new TMC5160_SPI(SPI_CS);
+    pinMode(SPI_DRV_ENN, OUTPUT);
+    digitalWrite(SPI_DRV_ENN, LOW); // Active low
 
-    switch (readStatus)
+    // Check if the TMC5160 answers back
+    TMC5160_Reg::IOIN_Register ioin = { 0 };
+
+    while (ioin.version != motor->IC_VERSION)
     {
-      case TMC5160_UART::SUCCESS:
-      Serial.print("Found a TMC device at address ");
-      Serial.println(motor.getSlaveAddress());
-      Serial.print("IC version: 0x");
-      Serial.print(ioin.version, HEX);
-      Serial.print(" (");
-      if (ioin.version == motor.IC_VERSION)
-        Serial.println("TMC5160).");
+      ioin.value = motor->readRegister(TMC5160_Reg::IO_INPUT_OUTPUT);
+
+      if (ioin.value == 0 || ioin.value == 0xFFFFFFFF) 
+      {
+        Serial.println("No TMC5160 found.");
+        delay(2000);
+      }
       else
-        Serial.println("unknown IC !)");
-      break;
+      {
+        Serial.println("Found a TMC device.");
+        Serial.print("IC version: 0x");
+        Serial.print(ioin.version, HEX);
+        Serial.print(" (");
+        if (ioin.version == motor->IC_VERSION)
+          Serial.println("TMC5160).");
+        else
+          Serial.println("unknown IC !)");
+      }
+    }
+  }
+  else
+  {
+    // Init TMC serial bus @ 500kbps
+    Serial1.begin(500000);
+    Serial1.setTimeout(2); // TMC5160 should answer back immediately when reading a register.
 
-      case TMC5160_UART::NO_REPLY:
-      Serial.println("No TMC5160 found.");
-      delay(2000);
-      break;
+    TMC5160_UART_Generic * _motor; // Temp pointer for UART specific functions
+    //Use Serial1 (hardware UART on Feather M0/Teensy) ; address 0
+    #if defined(KINETISK) && 0
+    Serial1.transmitterEnable(UART_TX_EN);
+    _motor = new TMC5160_UART(Serial1, 0);
+    #else
+    _motor = new TMC5160_UART_Transceiver(UART_TX_EN, Serial1, 0);
+    #endif
+    _motor->setCommunicationMode(TMC5160_UART::RELIABLE_MODE);
 
-      case TMC5160_UART::BAD_CRC:
-      Serial.println("A TMC device replied with a bad CRC.");
-      delay(100);
-      break;
+    motor = _motor;
+
+    // TMC5160 research on bus
+    TMC5160_UART::ReadStatus readStatus;
+    TMC5160_Reg::IOIN_Register ioin = { 0 };
+
+    while (ioin.version != _motor->IC_VERSION)
+    {
+      ioin.value = _motor->readRegister(TMC5160_Reg::IO_INPUT_OUTPUT, &readStatus);
+
+      switch (readStatus)
+      {
+        case TMC5160_UART::SUCCESS:
+        Serial.print("Found a TMC device at address ");
+        Serial.println(_motor->getSlaveAddress());
+        Serial.print("IC version: 0x");
+        Serial.print(ioin.version, HEX);
+        Serial.print(" (");
+        if (ioin.version == _motor->IC_VERSION)
+          Serial.println("TMC5160).");
+        else
+          Serial.println("unknown IC !)");
+        break;
+
+        case TMC5160_UART::NO_REPLY:
+        Serial.println("No TMC5160 found.");
+        delay(2000);
+        break;
+
+        case TMC5160_UART::BAD_CRC:
+        Serial.println("A TMC device replied with a bad CRC.");
+        delay(100);
+        break;
+      }
     }
   }
 
   /* Driver status */
   Serial.println();
   Serial.print("Global status: 0x");
-  Serial.println(motor.readRegister(TMC5160_Reg::GSTAT), HEX);
+  Serial.println(motor->readRegister(TMC5160_Reg::GSTAT), HEX);
   Serial.print("Driver status: 0x");
-  Serial.println(motor.readRegister(TMC5160_Reg::DRV_STATUS), HEX);
+  Serial.println(motor->readRegister(TMC5160_Reg::DRV_STATUS), HEX);
 
   /* Power stage tuning */
   TMC5160::PowerStageParameters powerParams;
@@ -272,19 +328,19 @@ void setup()
   Serial.println("Press any key to begin operation with the specified parameters.");
   while (!Serial.available());
 
-  motor.begin(powerParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
+  motor->begin(powerParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
 
   // //TODO TEMP, include in begin/tuning
   // TMC5160_Reg::SHORT_CONF_Register shortConf = { 0 };
   // shortConf.s2vs_level = 6; //Default value
   // shortConf.s2g_level = 8; //Increased value at high voltages
   // shortConf.shortfilter = 1; //Default value
-  // motor.writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
+  // motor->writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
 
-  motor.setCurrentPosition(0);
-  motor.setAcceleration(800);
-  motor.setMaxSpeed(400);
-  motor.setTargetPosition(4000);
+  motor->setCurrentPosition(0);
+  motor->setAcceleration(800);
+  motor->setMaxSpeed(400);
+  motor->setTargetPosition(4000);
 }
 
 void loop()
@@ -297,7 +353,7 @@ void loop()
     while (Serial.available())
       Serial.read();
 
-    motor.setTargetPosition(motor.getCurrentPosition() + 1000);
+    motor->setTargetPosition(motor->getCurrentPosition() + 1000);
   }
 
   static unsigned long lastFeedbackTime = millis();
@@ -306,10 +362,10 @@ void loop()
     lastFeedbackTime = millis();
     char buffer[11];
     Serial.print("GSTAT: ");
-    sprintf(buffer, "0x%08x", motor.readRegister(TMC5160_Reg::GSTAT));
+    sprintf(buffer, "0x%08x", motor->readRegister(TMC5160_Reg::GSTAT));
     Serial.print(buffer);
     Serial.print("\tDRV_STATUS: ");
-    sprintf(buffer, "0x%08x", motor.readRegister(TMC5160_Reg::DRV_STATUS));
+    sprintf(buffer, "0x%08x", motor->readRegister(TMC5160_Reg::DRV_STATUS));
     Serial.println(buffer);
   }
 }
@@ -322,7 +378,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
   while (!Serial.available()); */
 
   TMC5160_Reg::GSTAT_Register gstat = {0};
-  gstat.value = motor.readRegister(TMC5160_Reg::GSTAT);
+  gstat.value = motor->readRegister(TMC5160_Reg::GSTAT);
   if (!gstat.reset)
   {
     while (Serial.available())
@@ -338,16 +394,16 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
   shortConf.s2vs_level = 4;
   shortConf.s2g_level = 2;
   shortConf.shortfilter = 0;
-  motor.writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
+  motor->writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
 
   TMC5160::MotorParameters motorParams = {32, 0, 0};
-  motor.begin(*powerParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
-  //motor.writeRegister(TMC5160_Reg::IO_INPUT_OUTPUT, 0);
+  motor->begin(*powerParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
+  //motor->writeRegister(TMC5160_Reg::IO_INPUT_OUTPUT, 0);
 
   delay(200);
 
   //Check driver error state
-  gstat.value = motor.readRegister(TMC5160_Reg::GSTAT);
+  gstat.value = motor->readRegister(TMC5160_Reg::GSTAT);
   if (gstat.drv_err || gstat.uv_cp)
   {
     Serial.println();
@@ -364,7 +420,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
   // Initial values
   drvConf.bbmclks = 4;
   drvConf.drvstrength = 2;
-  motor.writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
+  motor->writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
 
   char answer = 0;
   while (answer != 'd')
@@ -387,7 +443,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
       default:
         break;
     }
-    motor.writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
+    motor->writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
   }
 
   Serial.println("");
@@ -416,7 +472,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
       default:
         break;
     }
-    motor.writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
+    motor->writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
   }
   if (drvConf.bbmclks <= 4)
   {
@@ -425,7 +481,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
     Serial.println("Keep 30% of reserve !");
     drvConf.bbmtime = 24;
     drvConf.bbmclks = 0;
-    motor.writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
+    motor->writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
 
     answer = 0;
     while (answer != 'd')
@@ -448,7 +504,7 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
         default:
           break;
       }
-      motor.writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
+      motor->writeRegister(TMC5160_Reg::DRV_CONF, drvConf.value);
     }
   }
 
@@ -605,49 +661,49 @@ void tuneStealthChop(TMC5160::PowerStageParameters *powerParams, TMC5160::MotorP
   shortConf.s2vs_level = 6;
   shortConf.s2g_level = 6;
   shortConf.shortfilter = 1;
-  motor.writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
+  motor->writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
 
-  motor.begin(*powerParams, *motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
-  motor.writeRegister(TMC5160_Reg::TPOWERDOWN, 32); //For Phase #1, the motor needs to be at standstill, with the run current.
+  motor->begin(*powerParams, *motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
+  motor->writeRegister(TMC5160_Reg::TPOWERDOWN, 32); //For Phase #1, the motor needs to be at standstill, with the run current.
 
   Serial.println("Starting automatic tuning phase #1...");
-  motor.setAcceleration(200);
-  motor.setRampMode(TMC5160::VELOCITY_MODE);
-  motor.writeRegister(TMC5160_Reg::XACTUAL, 0);
-  motor.setMaxSpeed(0.025);
+  motor->setAcceleration(200);
+  motor->setRampMode(TMC5160::VELOCITY_MODE);
+  motor->writeRegister(TMC5160_Reg::XACTUAL, 0);
+  motor->setMaxSpeed(0.025);
 
   TMC5160_Reg::PWM_AUTO_Register pwmAuto = { 0 };
   TMC5160_Reg::PWM_SCALE_Register pwmScale = { 0 };
 
   do {
-    pwmAuto.value = motor.readRegister(TMC5160_Reg::PWM_AUTO);
-    pwmScale.value = motor.readRegister(TMC5160_Reg::PWM_SCALE);
+    pwmAuto.value = motor->readRegister(TMC5160_Reg::PWM_AUTO);
+    pwmScale.value = motor->readRegister(TMC5160_Reg::PWM_SCALE);
     Serial.print("PWM_SCALE_AUTO: ");
     Serial.print(pwmScale.pwm_scale_auto);
     Serial.print(", PWM_OFS_AUTO: ");
     Serial.println(pwmAuto.pwm_ofs_auto);
     delay(100);
-  } while ( !(abs(motor.readRegister(TMC5160_Reg::XACTUAL)) > 10 && pwmScale.pwm_scale_auto == 0));  //Wait at least 10 steps.
+  } while ( !(abs(motor->readRegister(TMC5160_Reg::XACTUAL)) > 10 && pwmScale.pwm_scale_auto == 0));  //Wait at least 10 steps.
 
-  motor.stop();
-  pwmAuto.value = motor.readRegister(TMC5160_Reg::PWM_AUTO);
-  pwmScale.value = motor.readRegister(TMC5160_Reg::PWM_SCALE);
+  motor->stop();
+  pwmAuto.value = motor->readRegister(TMC5160_Reg::PWM_AUTO);
+  pwmScale.value = motor->readRegister(TMC5160_Reg::PWM_SCALE);
   Serial.print("Phase #1 should be OK. PWM_OFS_AUTO: ");
   Serial.println(pwmAuto.pwm_ofs_auto);
 
   Serial.println();
   Serial.println("Starting automatic tuning phase #2...");
-  motor.setAcceleration(400);
+  motor->setAcceleration(400);
 
   float tuningMaxSpeed = 200.0;// 200 steps / sec => 60RPM on a 200 steps motor
-  motor.setMaxSpeed(tuningMaxSpeed);
+  motor->setMaxSpeed(tuningMaxSpeed);
 
   TMC5160_Reg::RAMP_STAT_Register rampStat = { 0 };
 
   do {
-    pwmAuto.value = motor.readRegister(TMC5160_Reg::PWM_AUTO);
-    pwmScale.value = motor.readRegister(TMC5160_Reg::PWM_SCALE);
-    rampStat.value = motor.readRegister(TMC5160_Reg::RAMP_STAT);
+    pwmAuto.value = motor->readRegister(TMC5160_Reg::PWM_AUTO);
+    pwmScale.value = motor->readRegister(TMC5160_Reg::PWM_SCALE);
+    rampStat.value = motor->readRegister(TMC5160_Reg::RAMP_STAT);
 
     Serial.print("PWM_SCALE_AUTO: ");
     Serial.print(pwmScale.pwm_scale_auto);
@@ -661,22 +717,22 @@ void tuneStealthChop(TMC5160::PowerStageParameters *powerParams, TMC5160::MotorP
       if (pwmScale.pwm_scale_sum == 255 || pwmScale.pwm_scale_sum >= 4 * pwmAuto.pwm_ofs_auto)
       {
         tuningMaxSpeed /= 2.0;
-        motor.setMaxSpeed(tuningMaxSpeed);
+        motor->setMaxSpeed(tuningMaxSpeed);
         Serial.println("Decreasing max speed.");
       }
       else if (pwmScale.pwm_scale_sum <= floor(1.5 * (float)pwmAuto.pwm_ofs_auto))
       {
         tuningMaxSpeed *= 1.5;
-        motor.setMaxSpeed(tuningMaxSpeed);
+        motor->setMaxSpeed(tuningMaxSpeed);
         Serial.println("Increasing max speed.");
       }
     }
 
     delay(100);
   } while ( !(pwmScale.pwm_scale_auto == 0 && rampStat.velocity_reached));
-  motor.stop();
+  motor->stop();
 
-  pwmAuto.value = motor.readRegister(TMC5160_Reg::PWM_AUTO);
+  pwmAuto.value = motor->readRegister(TMC5160_Reg::PWM_AUTO);
   Serial.print("Phase #2 is finished. PWM_GRAD_AUTO: ");
   Serial.println(pwmAuto.pwm_grad_auto);
 
@@ -739,14 +795,14 @@ void startPowerStageTroubleshooting()
 
       //TODO add to library !
       TMC5160_Reg::CHOPCONF_Register chopConf = {0};
-      chopConf.value = motor.readRegister(TMC5160_Reg::CHOPCONF);
+      chopConf.value = motor->readRegister(TMC5160_Reg::CHOPCONF);
       chopConf.toff = 0; //Disable driver
-      motor.writeRegister(TMC5160_Reg::CHOPCONF, chopConf.value);
+      motor->writeRegister(TMC5160_Reg::CHOPCONF, chopConf.value);
 
       delay(10);
 
       chopConf.toff = 5; //default
-      motor.writeRegister(TMC5160_Reg::CHOPCONF, chopConf.value);
+      motor->writeRegister(TMC5160_Reg::CHOPCONF, chopConf.value);
 
       delay(100);
 
