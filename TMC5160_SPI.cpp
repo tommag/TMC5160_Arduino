@@ -73,10 +73,10 @@ uint32_t TMC5160_SPI::readRegister(uint8_t address)
 	_beginTransaction();
 	_spi->transfer(address);
 	uint32_t value = 0;
-	value |= _spi->transfer(0x00) << 24;
-	value |= _spi->transfer(0x00) << 16;
-	value |= _spi->transfer(0x00) << 8;
-	value |= _spi->transfer(0x00);
+	value |= (uint32_t)_spi->transfer(0x00) << 24;
+	value |= (uint32_t)_spi->transfer(0x00) << 16;
+	value |= (uint32_t)_spi->transfer(0x00) << 8;
+	value |= (uint32_t)_spi->transfer(0x00);
 	_endTransaction();
 
 	_lastRegisterReadSuccess = true; // In SPI mode there is no way to know if the TMC5130 is plugged...

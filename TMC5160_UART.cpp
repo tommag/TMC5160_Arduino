@@ -293,7 +293,7 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 	uint32_t data = 0;
 	for (int i = 0; i < 4; i++)
-		data += (inBuffer[3+i] << ((3-i)*8));
+		data += ((uint32_t)inBuffer[3+i] << ((3-i)*8));
 
 	#ifdef SERIAL_DEBUG
 	Serial.print("Read 0x");
@@ -324,7 +324,7 @@ void TMC5160_UART_Generic::_writeReg(uint8_t address, uint32_t data)
 	buffer[1] = _slaveAddress;
 	buffer[2] = address | WRITE_ACCESS;
 	for (int i = 0; i < 4; i++)
-		buffer[3+i] = (data & (0xFF << ((3-i)*8))) >> ((3-i)*8);
+		buffer[3+i] = (data & (0xFFul << ((3-i)*8))) >> ((3-i)*8);
 
 	computeCrc(buffer, 8);
 

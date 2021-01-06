@@ -46,12 +46,12 @@ private:
 public:
     template <class T2>
     BitField &operator=(T2 value) {
-        value_ = (value_ & ~(Mask << Index)) | ((value & Mask) << Index);
+        value_ = (value_ & ~((T)Mask << Index)) | (((T)value & (T)Mask) << Index);
         return *this;
     }
 
-    operator T() const             { return (value_ >> Index) & Mask; }
-    explicit operator bool() const { return value_ & (Mask << Index); }
+    operator T() const             { return (value_ >> Index) & (T)Mask; }
+    explicit operator bool() const { return value_ & ((T)Mask << Index); }
     BitField &operator++()         { return *this = *this + 1; }
     T operator++(int)              { T r = *this; ++*this; return r; }
     BitField &operator--()         { return *this = *this - 1; }
@@ -74,11 +74,11 @@ private:
     typedef typename MinimumTypeHelper<Index + Bits>::type T;
 public:
     BitField &operator=(bool value) {
-        value_ = (value_ & ~(Mask << Index)) | (value << Index);
+        value_ = (value_ & ~((T)Mask << Index)) | ((T)value << Index);
         return *this;
     }
 
-    explicit operator bool() const { return value_ & (Mask << Index); }
+    explicit operator bool() const { return value_ & ((T)Mask << Index); }
 
 private:
     T value_;
