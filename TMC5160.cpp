@@ -372,3 +372,14 @@ void TMC5160::clearEncoderDeviationFlag()
 	encStatus.deviation_warn = true;
 	writeRegister(TMC5160_Reg::ENC_STATUS, encStatus.value);
 }
+
+void TMC5160::setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFilter, int shortDelay = 0)
+{
+	TMC5160_Reg::SHORT_CONF_Register shortConf = {0};
+	shortConf.s2vs_level = constrain(s2vsLevel, 4, 15);
+	shortConf.s2g_level = constrain(s2gLevel, 2, 15);
+	shortConf.shortfilter = constrain(shortFilter, 0, 3);
+	shortConf.shortdelay = constrain(shortDelay, 0, 1);
+
+	writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
+}

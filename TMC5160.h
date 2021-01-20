@@ -167,6 +167,14 @@ public:
 
 	//TODO end stops and stallguard config functions ?
 
+	/* Configure the integrated short protection. Check datasheet for details.
+	 * - s2vsLevel : 4 (highest sensitivity) to 15 ; 6 to 8 recommended ; reset default 6
+	 * - s2gLevel : 2 (highest sensitivity) to 15 ; 6 to 14 recommended ; reset default 6 ; increase at higher voltage
+	 * - shortFilter : 0 to 3 ; reset default 1 ; increase in case of erroneous detection
+	 * - shortDelay : 0 to 1 ; reset default 0
+	 */
+	void setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFilter, int shortDelay = 0);
+
 protected:
 	static constexpr uint8_t WRITE_ACCESS = 0x80;	//Register write access for spi / uart communication
 	static constexpr uint32_t DEFAULT_F_CLK = 12000000; // Typical internal clock frequency in Hz.
