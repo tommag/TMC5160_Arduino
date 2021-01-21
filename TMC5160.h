@@ -41,6 +41,18 @@ public:
 	enum MotorDirection { NORMAL_MOTOR_DIRECTION =	0x00, INVERSE_MOTOR_DIRECTION = 0x1 };
 	enum RampMode { POSITIONING_MODE, VELOCITY_MODE, HOLD_MODE };
 
+	enum DriverStatus { 
+		OK, // No error condition
+		CP_UV, // Charge pump undervoltage
+		S2VSA, // Short to supply phase A
+		S2VSB, // Short to supply phase B
+		S2GA, // Short to ground phase A
+		S2GB, // Short to ground phase B
+		OT, // Overtemperature (error)
+		OTHER_ERR, // GSTAT drv_err is set but none of the above conditions is found.
+		OTPW // Overtemperature pre warning
+	};
+
 	struct PowerStageParameters {
 		uint8_t drvStrength = 2; // MOSFET gate driver current (0 to 3)
 		uint8_t bbmTime = 0; // "Break Before Make" duration specified in ns (0 to 24)
@@ -110,7 +122,9 @@ public:
 	void enable(); //Enable the driver
 
 	//TODO chopper config functions ?
-	//TODO driver status functions (read GSTAT and DRV_STATUS and return an enum value)
+
+	DriverStatus getDriverStatus(); // Get the current driver status (OK / error conditions)
+	static const char* getDriverStatusDescription(DriverStatus st); // Get a human readable description of the given driver status 
 
 	/* Set the speeds (in steps/second) at which the internal functions and modes will be turned on or off.
 	 * Below pwmThrs, "stealthChop" PWM mode is used.

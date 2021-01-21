@@ -262,6 +262,52 @@ void TMC5160::enable()
 	writeRegister(TMC5160_Reg::CHOPCONF, _chopConf.value);
 }
 
+TMC5160::DriverStatus TMC5160::getDriverStatus() 
+{
+	TMC5160_Reg::GSTAT_Register gstat = {0};
+	gstat.value = readRegister(TMC5160_Reg::GSTAT);
+	TMC5160_Reg::DRV_STATUS_Register drvStatus = {0};
+	drvStatus.value = readRegister(TMC5160_Reg::DRV_STATUS);
+
+	if (gstat.uv_cp)
+		return CP_UV;
+	if (drvStatus.s2vsa)
+		return S2VSA;
+	if (drvStatus.s2vsb)
+		return S2VSB;
+	if (drvStatus.s2ga)
+		return S2GA;
+	if (drvStatus.s2gb)
+		return S2GB;
+	if (drvStatus.ot)
+		return OT;
+	if (gstat.drv_err)
+		return OTHER_ERR;
+	if (drvStatus.otpw)
+		return OTPW;
+
+	return OK;
+}
+
+const char* TMC5160::getDriverStatusDescription(DriverStatus st)
+{
+	switch (st)
+	{
+		case OK: return "OK";
+		case CP_UV: return "Charge pump undervoltage";
+		case S2VSA: return "Short to supply phase A";
+		case S2VSB: return "Short to supply phase B";
+		case S2GA: return "Short to ground phase A";
+		case S2GB: return "Short to ground phase B";
+		case OT: return "Overtemperature";
+		case OTHER_ERR: return "Other driver error";
+		case OTPW: return "Overtemperature warning";
+		default: break;
+	}
+
+	return "Unknown";
+}
+
 void TMC5160::setModeChangeSpeeds(float pwmThrs, float coolThrs, float highThrs)
 {
 	writeRegister(TMC5160_Reg::TPWMTHRS, thrsSpeedToTstep(pwmThrs));
