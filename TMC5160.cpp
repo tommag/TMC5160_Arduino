@@ -136,7 +136,7 @@ float TMC5160::getCurrentPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XACTUAL);
 
-	if (uStepPos == 0xFFFFFFFF)
+	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
 		return NAN;
 	else
 		return (float)uStepPos / (float)_uStepCount;
@@ -146,7 +146,7 @@ float TMC5160::getEncoderPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::X_ENC);
 
-	if (uStepPos == 0xFFFFFFFF)
+	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
 		return NAN;
 	else
 		return (float)uStepPos / (float)_uStepCount;
@@ -156,7 +156,7 @@ float TMC5160::getLatchedPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XLATCH);
 
-	if (uStepPos == 0xFFFFFFFF)
+	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
 		return NAN;
 	else
 		return (float)uStepPos / (float)_uStepCount;
@@ -166,7 +166,7 @@ float TMC5160::getLatchedEncoderPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::ENC_LATCH);
 
-	if (uStepPos == 0xFFFFFFFF)
+	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
 		return NAN;
 	else
 		return (float)uStepPos / (float)_uStepCount;
@@ -176,7 +176,7 @@ float TMC5160::getTargetPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XTARGET);
 
-	if (uStepPos == 0xFFFFFFFF)
+	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
 		return NAN;
 	else
 		return (float)uStepPos / (float)_uStepCount;
@@ -373,7 +373,7 @@ void TMC5160::clearEncoderDeviationFlag()
 	writeRegister(TMC5160_Reg::ENC_STATUS, encStatus.value);
 }
 
-void TMC5160::setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFilter, int shortDelay = 0)
+void TMC5160::setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFilter, int shortDelay)
 {
 	TMC5160_Reg::SHORT_CONF_Register shortConf = {0};
 	shortConf.s2vs_level = constrain(s2vsLevel, 4, 15);
