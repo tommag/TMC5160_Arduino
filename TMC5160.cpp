@@ -37,7 +37,7 @@ TMC5160::~TMC5160()
 }
 
 
-bool TMC5160::begin(PowerStageParameters &powerParams, MotorParameters &motorParams, MotorDirection stepperDirection )
+bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParameters &motorParams, MotorDirection stepperDirection )
 {
 	/* Clear the reset and charge pump undervoltage flags */
 	TMC5160_Reg::GSTAT_Register gstat = { 0 };
