@@ -401,7 +401,10 @@ void tunePowerStage(TMC5160::PowerStageParameters *powerParams)
   shortConf.shortfilter = 0;
   motor->writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
 
-  TMC5160::MotorParameters motorParams = {32, 0, 0};
+  TMC5160::MotorParameters motorParams;
+  motorParams.globalScaler = 32;
+  motorParams.irun = 0;
+  motorParams.ihold = 0;
   motor->begin(*powerParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
   //motor->writeRegister(TMC5160_Reg::IO_INPUT_OUTPUT, 0);
 
