@@ -691,7 +691,7 @@ void tuneStealthChop(TMC5160::PowerStageParameters *powerParams, TMC5160::MotorP
     Serial.print(", PWM_OFS_AUTO: ");
     Serial.println(pwmAuto.pwm_ofs_auto);
     delay(100);
-  } while ( !(abs(motor->readRegister(TMC5160_Reg::XACTUAL)) > 10 && pwmScale.pwm_scale_auto == 0));  //Wait at least 10 steps.
+  } while ( !(abs((int32_t) motor->readRegister(TMC5160_Reg::XACTUAL)) > 10 && pwmScale.pwm_scale_auto == 0));  //Wait at least 10 steps.
 
   motor->stop();
   pwmAuto.value = motor->readRegister(TMC5160_Reg::PWM_AUTO);
