@@ -6,3 +6,5 @@ This library is intended as a basic driver library for controlling Trinamic TMC5
 It is tested on ESP32 and Teensy platforms.
 
 Originally based on Estee_TMC5130 code by Mike Estee.
+
+Check out more examples at https://github.com/tommag/Estee_TMC5130/tree/master/examples (the API should be almost compatible)
