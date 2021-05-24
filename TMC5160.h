@@ -37,6 +37,7 @@ SOFTWARE.
 class TMC5160 {
 public:
 	static constexpr uint8_t IC_VERSION = 0x30;
+	static constexpr uint32_t DEFAULT_F_CLK = 12000000; // Typical internal clock frequency in Hz.
 
 	enum MotorDirection { NORMAL_MOTOR_DIRECTION =	0x00, INVERSE_MOTOR_DIRECTION = 0x1 };
 	enum RampMode { POSITIONING_MODE, VELOCITY_MODE, HOLD_MODE };
@@ -191,7 +192,6 @@ public:
 
 protected:
 	static constexpr uint8_t WRITE_ACCESS = 0x80;	//Register write access for spi / uart communication
-	static constexpr uint32_t DEFAULT_F_CLK = 12000000; // Typical internal clock frequency in Hz.
 
 	bool _lastRegisterReadSuccess = false;
 
