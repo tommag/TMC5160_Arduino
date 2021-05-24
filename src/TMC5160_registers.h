@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef TMC5160_REGISTERS_H
 #define TMC5160_REGISTERS_H
 
-#include <util/Bitfield.h>
+#include <Bitfield.h>
 
 namespace TMC5160_Reg {
 

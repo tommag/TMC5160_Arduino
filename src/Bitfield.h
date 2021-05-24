@@ -7,13 +7,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
- //TODO check if the current GCC version has it...
-#include <type_traits>
-/*#if defined(PLATFORMIO) || defined(ESP_PLATFORM) || defined(TEENSY)
-  #include <type_traits>
-#else
-  #include "type_traits.h"
-#endif */
+#include <ArxTypeTraits.h>
 
 // using std::uint8_t;
 // using std::uint16_t;
