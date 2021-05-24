@@ -30,10 +30,6 @@ SOFTWARE.
 #include <SPI.h>
 #include <TMC5160_registers.h>
 
-#ifdef ESP_PLATFORM
-#include "driver/uart.h"
-#endif
-
 class TMC5160 {
 public:
 	static constexpr uint8_t IC_VERSION = 0x30;
@@ -361,85 +357,6 @@ protected:
 		return _serial->available();
 	}
 };
-
-#ifdef ESP_PLATFORM
-/* ESP32 UART interface :
- * the TMC5160 SWSEL input must be tied high.
- *
- * The UART peripheral should be initialized externally and can be set to
- * control the RS485 transceiver.
- * Example code :
- *
-  uart_config_t uart_config = {
-         .baud_rate = 500000,
-         .data_bits = UART_DATA_8_BITS,
-         .parity = UART_PARITY_DISABLE,
-         .stop_bits = UART_STOP_BITS_1,
-         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-         .rx_flow_ctrl_thresh = 122
-   };
-   uart_param_config(UART_NUM_1, &uart_config);
-   uart_set_pin(UART_NUM_1, UART1_TX_PIN, UART1_RX_PIN, UART1_TX_EN_PIN, UART_PIN_NO_CHANGE);
-   uart_driver_install(UART_NUM_1, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-   uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX); //Not yet available on Arduino-ESP32...
-
- */
-class TMC5160_UART_ESP32 : public TMC5160_UART_Generic {
-public:
-	TMC5160_UART_ESP32(uart_port_t uartNum = UART_NUM_1, // Serial port to use
-		uint8_t slaveAddress = 0, // TMC5160 slave address (default 0 if NAI is low, 1 if NAI is high)
-		uint32_t fclk = DEFAULT_F_CLK) :
-		TMC5160_UART_Generic(slaveAddress, fclk), _uartNum(uartNum)
-	{	}
-
-protected:
-	uart_port_t _uartNum;
-
-	virtual void beginTransmission()
-	{
-		//On ESP32 delay between transmissions is taken care of as a break after writing
-		//TODO make sure that there are 12bit times between 2 transmissions
-	}
-
-	virtual void uartFlushInput()
-	{
-		uart_flush_input(_uartNum);
-	}
-
-	virtual void uartWriteBytes(const uint8_t *buf, uint8_t len)
-	{
-		// uart_write_bytes(_uartNum, (char*)buf, len);
-		uart_write_bytes_with_break(_uartNum, (char*)buf, len, 1);
-	}
-
-	virtual int uartReadBytes(uint8_t *buf, uint8_t len)
-	{
-		unsigned long start = micros();
-		size_t rxLen = 0;
-		while (micros() - start < 1000 && rxLen < len) //timeout : 1ms
-			uart_get_buffered_data_len(_uartNum, &rxLen);
-
-		return uart_read_bytes(_uartNum, buf, len, 0);
-	}
-
-	virtual uint8_t uartReadByte()
-	{
-		uint8_t byte = 0;
-		if (uart_read_bytes(_uartNum, &byte, 1, 0))
-			return byte;
-		else
-			return 0xFF;
-	}
-
-	virtual int uartBytesAvailable()
-	{
-		size_t rxLen = 0;
-		uart_get_buffered_data_len(_uartNum, &rxLen);
-		return rxLen;
-	}
-};
-
-#endif
 
 /* Arduino UART interface with external transceiver support :
  * the TMC5160 SWSEL input must be tied high.

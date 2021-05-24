@@ -1,7 +1,7 @@
-/* ESP32 / TMC5160 UART example
+/* TMC5160 UART example
 
 This code demonstrates the usage of a Trinamic TMC5160 stepper driver using its
-single-wire interface from an ESP32 host.
+single-wire interface.
 
 Hardware setup :
 A RS485 transceiver must be connected to the Serial1 pins with the TX Enable pin
@@ -18,22 +18,20 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
                                            +++        | |                 |
 +-----------+        +--------------+      | | 1k     +-+ SWSEL           |
 |           |        |              |      +++          |                 |
-|     RX 16 +--------+ RO           |       |           |                 |
+|     RX 0 +--------+ RO           |       |           |                 |
 |           |        |            A +-------+-----------+ SWP         NAI ++ open
 |           |    +---+ /RE          |                   |                 |
-|  TX EN 19 +----+   |            B +-------------------+ SWN             |
+|  TX EN 5 +----+   |            B +-------------------+ SWN             |
 |           |    +---+ DE           |                   |                 |
 |           |        |          GND +----+         +----+ DRV_ENN         |
-|     TX 17 +--------+ DI           |    |         |    |                 |
+|     TX 1 +--------+ DI           |    |         |    |                 |
 |           |        |              |    +---------+----+ GND             |
 +-----------+        +--------------+                   +-----------------+
- ESP32                   MAX3485                              TMC5130
+ Arduino                 MAX3485                              TMC5130
                        or equivalent
 
 
-Tested on Adafruit Feather HUZZAH32
-
-Copyright (c) 2018 Tom Magnier
+Copyright (c) 2018-2021 Tom Magnier
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -56,14 +54,10 @@ SOFTWARE.
 
 #include <Arduino.h>
 #include <TMC5160.h>
-#include "driver/uart.h"
 
-const uint8_t UART1_RX_PIN = 16;
-const uint8_t UART1_TX_PIN = 17;
-const uint8_t UART1_TX_EN_PIN = 21;   // Differential transceiver TX enable pin
-const int UART_BUF_SIZE = 256;
+const uint8_t UART_TX_EN_PIN = 5;   // Differential transceiver TX enable pin
 
-TMC5160_UART_ESP32 tmc = TMC5160_UART_ESP32(UART_NUM_1, 0); //Use UART 1 ; address 0
+TMC5160_UART_Transceiver motor = TMC5160_UART_Transceiver(UART_TX_EN_PIN, Serial1, 0); //Use Serial 1 ; address 0
 
 
 void setup()
@@ -71,43 +65,26 @@ void setup()
   // USB/debug serial coms
   Serial.begin(115200);
 
-  //UART TMC bus init
-  uart_config_t uart_config = {
-        .baud_rate = 500000,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .rx_flow_ctrl_thresh = 122,
-  };
-  uart_param_config(UART_NUM_1, &uart_config);
-  uart_set_pin(UART_NUM_1, UART1_TX_PIN, UART1_RX_PIN, UART1_TX_EN_PIN, UART_PIN_NO_CHANGE);
-  uart_driver_install(UART_NUM_1, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-  uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX); //Not yet available on Arduino-ESP32...
+  // Init TMC serial bus @ 250kbps
+  Serial1.begin(250000);
+  Serial1.setTimeout(5); // TMC5130 should answer back immediately when reading a register.
 
   // status LED
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // This sets the motor & driver parameters /!\ run the configWizard for your driver and motor first !
-  TMC5160::PowerStageParameters powerStageParams;
+   // This sets the motor & driver parameters /!\ run the configWizard for your driver and motor for fine tuning !
+  TMC5160::PowerStageParameters powerStageParams; // defaults.
   TMC5160::MotorParameters motorParams;
-  powerStageParams.drvStrength = 0;
-  powerStageParams.bbmTime = 8;
-  powerStageParams.bbmClks = 0;
-  motorParams.globalScaler = 98;
+  motorParams.globalScaler = 98; // Adapt to your driver and motor (check TMC5160 datasheet - "Selecting sense resistors")
   motorParams.irun = 31;
-  motorParams.ihold = 0;
-  motorParams.freewheeling = TMC5160_Reg::FREEWHEEL_SHORT_LS;
-  motorParams.pwmOfsInitial = 36;
-  motorParams.pwmGradInitial = 73;
+  motorParams.ihold = 16;
 
-  tmc.begin(powerStageParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
+  motor.begin(powerStageParams, motorParams, TMC5160::NORMAL_MOTOR_DIRECTION);
 
   // ramp definition
-  tmc.setRampMode(TMC5160::POSITIONING_MODE);
-  tmc.setMaxSpeed(200);
-  tmc.setRampSpeeds(0, 0.1, 100); //Start, stop, threshold speeds
-  tmc.setAccelerations(250, 350, 500, 700); //AMAX, DMAX, A1, D1
+  motor.setRampMode(TMC5160::POSITIONING_MODE);
+  motor.setMaxSpeed(400);
+  motor.setAcceleration(500);
 
   Serial.println("starting up");
 }
@@ -125,9 +102,7 @@ void loop()
 
     // reverse direction
     dir = !dir;
-    tmc.setTargetPosition(dir ? 200 : 0);  // 1 full rotation = 200s/rev
-
-    digitalWrite(LED_BUILTIN, dir);
+    motor.setTargetPosition(dir ? 200 : 0);  // 1 full rotation = 200s/rev
   }
 
   // print out current position
@@ -136,12 +111,11 @@ void loop()
     t_echo = now;
 
     // get the current target position
-    float xactual = tmc.getCurrentPosition();
-    float vactual = tmc.getCurrentSpeed();
+    float xactual = motor.getCurrentPosition();
+    float vactual = motor.getCurrentSpeed();
     Serial.print("current position : ");
     Serial.print(xactual);
     Serial.print("\tcurrent speed : ");
     Serial.println(vactual);
   }
-
 }
