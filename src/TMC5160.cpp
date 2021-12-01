@@ -132,6 +132,17 @@ void TMC5160::setRampMode(TMC5160::RampMode mode)
 	_currentRampMode = mode;
 }
 
+/**
+ * 
+ * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
+ * @return true if the target position has been reached, false otherwise.
+ */
+bool TMC5160::isPositionReached(void)
+{
+	uint32_t reg_ramp_stat = readRegister(TMC5160_Reg::RAMP_STAT);
+	return (reg_ramp_stat & (1 << 9));
+}
+
 float TMC5160::getCurrentPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XACTUAL);

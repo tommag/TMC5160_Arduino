@@ -98,6 +98,7 @@ public:
 	*/
 	void setRampMode(RampMode mode);
 
+	bool isPositionReached(void); // Return true if the target position has been reached
 	float getCurrentPosition(); // Return the current internal position (steps)
 	float getEncoderPosition(); // Return the current position according to the encoder counter (steps)
 	float getLatchedPosition(); // Return the position that was latched on the last ref switch / encoder event (steps)
