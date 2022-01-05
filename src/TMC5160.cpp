@@ -254,6 +254,18 @@ bool TMC5160::isTargetPositionReached(void)
 	return rampStatus.position_reached ? true : false;
 }
 
+/**
+ * 
+ * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
+ * @return true if the target velocity has been reached, false otherwise.
+ */
+bool TMC5160::isTargetVelocityReached(void)
+{
+	TMC5160_Reg::RAMP_STAT_Register rampStatus = {0};
+    rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
+	return rampStatus.velocity_reached ? true : false;
+}
+
 void TMC5160::stop()
 {
 	// §14.2.4 Early Ramp Termination option b)
