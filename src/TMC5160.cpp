@@ -132,17 +132,6 @@ void TMC5160::setRampMode(TMC5160::RampMode mode)
 	_currentRampMode = mode;
 }
 
-/**
- * 
- * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
- * @return true if the target position has been reached, false otherwise.
- */
-bool TMC5160::isPositionReached(void)
-{
-	uint32_t reg_ramp_stat = readRegister(TMC5160_Reg::RAMP_STAT);
-	return (reg_ramp_stat & (1 << 9));
-}
-
 float TMC5160::getCurrentPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XACTUAL);
@@ -251,6 +240,18 @@ void TMC5160::setAccelerations(float maxAccel, float maxDecel, float startAccel,
 	writeRegister(TMC5160_Reg::DMAX, accelFromHz(fabs(maxDecel)));
 	writeRegister(TMC5160_Reg::A_1, accelFromHz(fabs(startAccel)));
 	writeRegister(TMC5160_Reg::D_1, accelFromHz(fabs(finalDecel)));
+}
+
+/**
+ * 
+ * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
+ * @return true if the target position has been reached, false otherwise.
+ */
+bool TMC5160::isTargetPositionReached(void)
+{
+	TMC5160_Reg::RAMP_STAT_Register rampStatus = {0};
+    rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
+	return rampStatus.position_reached ? true : false;
 }
 
 void TMC5160::stop()

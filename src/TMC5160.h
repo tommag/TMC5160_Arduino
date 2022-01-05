@@ -98,7 +98,6 @@ public:
 	*/
 	void setRampMode(RampMode mode);
 
-	bool isPositionReached(void); // Return true if the target position has been reached
 	float getCurrentPosition(); // Return the current internal position (steps)
 	float getEncoderPosition(); // Return the current position according to the encoder counter (steps)
 	float getLatchedPosition(); // Return the position that was latched on the last ref switch / encoder event (steps)
@@ -114,6 +113,8 @@ public:
 	void setAcceleration(float maxAccel); // Set the ramp acceleration / deceleration (steps / second^2)
 	void setAccelerations(float maxAccel, float maxDecel, float startAccel, float finalDecel); // Set the ramp accelerations AMAX, DMAX, A1, D1 (steps / second^2) /!\ Do not set startAccel, finalDecel to 0 even if transitionSpeed = 0
 
+	bool isTargetPositionReached(void); // Return true if the target position has been reached
+	
 	void stop(); // Stop the current motion according to the set ramp mode and motion parameters. The max speed and start speed are set to 0 but the target position stays unchanged.
 	
 	void disable(); //Disable the driver, all bridges off
