@@ -209,7 +209,7 @@ void TMC5160::setCurrentPosition(float position, bool updateEncoderPos)
 
 void TMC5160::setTargetPosition(float position)
 {
-	writeRegister(TMC5160_Reg::XTARGET, (int)(position * (float)_uStepCount));
+	writeRegister(TMC5160_Reg::XTARGET, (int32_t)(position * (float)_uStepCount));
 }
 
 void TMC5160::setMaxSpeed(float speed)
