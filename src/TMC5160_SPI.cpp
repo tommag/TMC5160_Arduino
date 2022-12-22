@@ -50,6 +50,16 @@ void TMC5160_SPI::_endTransaction()
 {
 	_chipSelect(_CS, false);
 	_spi->endTransaction();
+	
+	// Wait for the minimum CSN high time
+	// Define a function for very short delays: DelayNs(ns)
+	// DelayNs has a precision of 7*SysClk. That's 438 ns for 16 MHz, 73 ns for 96 MHz, 12 ns for 600 MHz.
+	#define DelaySysClk(x) {volatile uint32_t _c = x; while (_c--) {}} // This is for delays shorter than 1ms
+	// It takes 7 SysClk cycles per loop. (Optimize: Faster)
+	#define NS_PER_SYS_CLK ((1000000000 + F_CPU/2)/F_CPU)
+	#define DelayNs(ns) DelaySysClk((ns + NS_PER_SYS_CLK - 1)/7/NS_PER_SYS_CLK) // Delays for roughly the given number of nanoseconds
+	
+	DelayNs((2*1000000000)/this->fclk + 50); // Minimum delay is 2*tCLK + 10 ns. That's 177 ns for the default 12 MHz TMC clock.
 }
 
 uint32_t TMC5160_SPI::readRegister(uint8_t address)
@@ -62,13 +72,7 @@ uint32_t TMC5160_SPI::readRegister(uint8_t address)
 	_spi->transfer(0x00);
 	_spi->transfer(0x00);
 	_endTransaction();
-
-	// skip a beat
-	#define nop() asm volatile("nop")
-	nop();
-	nop();
-	nop();
-
+	
 	// read it in the second cycle
 	_beginTransaction();
 	_spi->transfer(address);
