@@ -14,6 +14,11 @@
 // using std::uint32_t;
 // using std::uint64_t;
 
+// This library has been reported to produce undefined behavior. 
+// Disabling GCC optimizations seem to fix the problem. 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 namespace {
 
 template <size_t LastBit>
@@ -77,5 +82,7 @@ public:
 private:
     T value_;
 };
+
+#pragma GCC pop_options
 
 #endif
