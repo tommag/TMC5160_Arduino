@@ -198,11 +198,11 @@ float TMC5160::getCurrentSpeed()
 
 void TMC5160::setCurrentPosition(float position, bool updateEncoderPos)
 {
-	writeRegister(TMC5160_Reg::XACTUAL, (int)(position * (float)_uStepCount));
+	writeRegister(TMC5160_Reg::XACTUAL, (int32_t)(position * (float)_uStepCount));
 
 	if (updateEncoderPos)
 	{
-		writeRegister(TMC5160_Reg::X_ENC, (int)(position * (float)_uStepCount));
+		writeRegister(TMC5160_Reg::X_ENC, (int32_t)(position * (float)_uStepCount));
 		clearEncoderDeviationFlag();
 	}
 }
@@ -339,20 +339,20 @@ void TMC5160::setModeChangeSpeeds(float pwmThrs, float coolThrs, float highThrs)
 	writeRegister(TMC5160_Reg::THIGH, thrsSpeedToTstep(highThrs));
 }
 
-bool TMC5160::setEncoderResolution(int motorSteps, int encResolution, bool inverted)
+bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bool inverted)
 {
 	//See §22.2
 	float factor = (float)motorSteps * (float)_uStepCount / (float)encResolution;
 
 	//Check if the binary prescaler gives an exact match
-	if ((int)(factor * 65536.0f) * encResolution == motorSteps * _uStepCount * 65536)
+	if ((int32_t)(factor * 65536.0f) * encResolution == motorSteps * _uStepCount * 65536)
 	{
 		TMC5160_Reg::ENCMODE_Register encmode = { 0 };
 		encmode.value = readRegister(TMC5160_Reg::ENCMODE);
 		encmode.enc_sel_decimal = false;
 		writeRegister(TMC5160_Reg::ENCMODE, encmode.value);
 
-		int32_t encConst = (int)(factor * 65536.0f);
+		int32_t encConst = (int32_t)(factor * 65536.0f);
 		if (inverted)
 			encConst = -encConst;
 		writeRegister(TMC5160_Reg::ENC_CONST, encConst);
@@ -395,7 +395,7 @@ bool TMC5160::setEncoderResolution(int motorSteps, int encResolution, bool inver
 #endif
 
 		//Check if the decimal prescaler gives an exact match. Floats have about 7 digits of precision so no worries here.
-		return ((int)(factor * 10000.0f) * encResolution == motorSteps * (int)_uStepCount * 10000);
+		return ((int32_t)(factor * 10000.0f) * encResolution == motorSteps * (int32_t)_uStepCount * 10000);
 	}
 }
 

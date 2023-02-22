@@ -150,7 +150,7 @@ public:
 	 * Return :
 	 * 		true if an exact match was found, false otherwise
 	 */
-	bool setEncoderResolution(int motorSteps, int encResolution, bool inverted = false);
+	bool setEncoderResolution(int32_t motorSteps, int32_t encResolution, bool inverted = false);
 
 	/* Configure the encoder N event context.
 	 * Params :
