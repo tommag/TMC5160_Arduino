@@ -214,7 +214,7 @@ void TMC5160::setTargetPosition(float position)
 
 void TMC5160::setMaxSpeed(float speed)
 {
-	writeRegister(TMC5160_Reg::VMAX, speedFromHz(fabs(speed)));
+	writeRegister(TMC5160_Reg::VMAX, min(0x7FFFFF, speedFromHz(fabs(speed)))); // VMAX : 23 bits
 
 	if (_currentRampMode == VELOCITY_MODE)
 	{
@@ -224,9 +224,9 @@ void TMC5160::setMaxSpeed(float speed)
 
 void TMC5160::setRampSpeeds(float startSpeed, float stopSpeed, float transitionSpeed)
 {
-	writeRegister(TMC5160_Reg::VSTART, speedFromHz(fabs(startSpeed)));
-	writeRegister(TMC5160_Reg::VSTOP, speedFromHz(fabs(stopSpeed)));
-	writeRegister(TMC5160_Reg::V_1, speedFromHz(fabs(transitionSpeed)));
+	writeRegister(TMC5160_Reg::VSTART, min(0x3FFFF, speedFromHz(fabs(startSpeed)))); // VSTART : 18 bits
+	writeRegister(TMC5160_Reg::VSTOP, min(0x3FFFF, speedFromHz(fabs(stopSpeed)))); // VSTOP : 18 bits
+	writeRegister(TMC5160_Reg::V_1, min(0xFFFFF, speedFromHz(fabs(transitionSpeed)))); // V1 : 20 bits
 }
 
 void TMC5160::setAcceleration(float maxAccel)
@@ -236,10 +236,10 @@ void TMC5160::setAcceleration(float maxAccel)
 
 void TMC5160::setAccelerations(float maxAccel, float maxDecel, float startAccel, float finalDecel)
 {
-	writeRegister(TMC5160_Reg::AMAX, accelFromHz(fabs(maxAccel)));
-	writeRegister(TMC5160_Reg::DMAX, accelFromHz(fabs(maxDecel)));
-	writeRegister(TMC5160_Reg::A_1, accelFromHz(fabs(startAccel)));
-	writeRegister(TMC5160_Reg::D_1, accelFromHz(fabs(finalDecel)));
+	writeRegister(TMC5160_Reg::AMAX, min(0xFFFF, accelFromHz(fabs(maxAccel)))); // AMAX, DMAX, A1, D1 : 16 bits
+	writeRegister(TMC5160_Reg::DMAX, min(0xFFFF, accelFromHz(fabs(maxDecel))));
+	writeRegister(TMC5160_Reg::A_1, min(0xFFFF, accelFromHz(fabs(startAccel))));
+	writeRegister(TMC5160_Reg::D_1, min(0xFFFF, accelFromHz(fabs(finalDecel))));
 }
 
 /**
@@ -334,9 +334,9 @@ const char* TMC5160::getDriverStatusDescription(DriverStatus st)
 
 void TMC5160::setModeChangeSpeeds(float pwmThrs, float coolThrs, float highThrs)
 {
-	writeRegister(TMC5160_Reg::TPWMTHRS, thrsSpeedToTstep(pwmThrs));
-	writeRegister(TMC5160_Reg::TCOOLTHRS, thrsSpeedToTstep(coolThrs));
-	writeRegister(TMC5160_Reg::THIGH, thrsSpeedToTstep(highThrs));
+	writeRegister(TMC5160_Reg::TPWMTHRS, min(0xFFFFF, thrsSpeedToTstep(pwmThrs))); // 20 bits
+	writeRegister(TMC5160_Reg::TCOOLTHRS, min(0xFFFFF, thrsSpeedToTstep(coolThrs)));
+	writeRegister(TMC5160_Reg::THIGH, min(0xFFFFF, thrsSpeedToTstep(highThrs)));
 }
 
 bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bool inverted)
@@ -426,7 +426,7 @@ void TMC5160::setEncoderLatching(bool enabled)
 
 void TMC5160::setEncoderAllowedDeviation(int steps)
 {
-	writeRegister(TMC5160_Reg::ENC_DEVIATION, steps * _uStepCount);
+	writeRegister(TMC5160_Reg::ENC_DEVIATION, min(0xFFFFF, steps * _uStepCount)); // 20 bits
 }
 
 bool TMC5160::isEncoderDeviationDetected()
