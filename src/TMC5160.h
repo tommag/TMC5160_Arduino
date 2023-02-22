@@ -202,15 +202,15 @@ private:
 
 	// Following §14.1 Real world unit conversions
 	// v[Hz] = v[5160A] * ( f CLK [Hz]/2 / 2^23 )
-	float speedToHz(long speedInternal) { return ((float)speedInternal * (float)_fclk / (float)(1ul << 24) / (float)_uStepCount); }
-	long speedFromHz(float speedHz) { return (long)(speedHz / ((float)_fclk / (float)(1ul << 24)) * (float)_uStepCount); }
+	float speedToHz(int32_t speedInternal) { return ((float)speedInternal * (float)_fclk / (float)(1ul << 24) / (float)_uStepCount); }
+	int32_t speedFromHz(float speedHz) { return (int32_t)(speedHz / ((float)_fclk / (float)(1ul << 24)) * (float)_uStepCount); }
 
 	// Following §14.1 Real world unit conversions
 	// a[Hz/s] = a[5160A] * f CLK [Hz]^2 / (512*256) / 2^24
-	long accelFromHz(float accelHz) { return (long)(accelHz / ((float)_fclk * (float)_fclk / (512.0*256.0) / (float)(1ul<<24)) * (float)_uStepCount); }
+	int32_t accelFromHz(float accelHz) { return (int32_t)(accelHz / ((float)_fclk * (float)_fclk / (512.0*256.0) / (float)(1ul<<24)) * (float)_uStepCount); }
 
 	// See §12 Velocity based mode control
-	long thrsSpeedToTstep(float thrsSpeed) { return thrsSpeed != 0.0 ? (long)constrain((float)_fclk / (thrsSpeed * 256.0), 0, 1048575) : 0; }
+	int32_t thrsSpeedToTstep(float thrsSpeed) { return thrsSpeed != 0.0 ? (int32_t)constrain((float)_fclk / (thrsSpeed * 256.0), 0, 1048575) : 0; }
 };
 
 
