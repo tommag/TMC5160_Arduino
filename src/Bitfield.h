@@ -16,8 +16,10 @@
 
 // This library has been reported to produce undefined behavior. 
 // Disabling GCC optimizations seem to fix the problem. 
+#ifndef ESP_PLATFORM
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
+#endif
 
 namespace {
 
@@ -83,6 +85,8 @@ private:
     T value_;
 };
 
+#ifndef ESP_PLATFORM
 #pragma GCC pop_options
+#endif
 
 #endif
