@@ -252,7 +252,8 @@ public:
 
 
 	TMC5160_UART_Generic(uint8_t slaveAddress = 0, // TMC5160 slave address (default 0 if NAI is low, 1 if NAI is high)
-		uint32_t fclk = DEFAULT_F_CLK);
+		uint32_t baudRate = 500000, // UART baud rate (necessary to compute certain delays)
+		uint32_t fclk = DEFAULT_F_CLK); // TMC5160 clock freq 
 
 	virtual bool begin(PowerStageParameters &powerParams, MotorParameters &motorParams, MotorDirection stepperDirection/*=NORMAL_MOTOR_DIRECTION*/);
 
@@ -280,19 +281,16 @@ protected:
 	uint8_t _slaveAddress;
 	CommunicationMode _currentMode;
 	uint8_t _transmissionCounter;
+	uint32_t _uartBaudRate;
 
 	/* Read / write fail statistics */
-	uint32_t _readAttemptsCounter;
-	uint32_t _readSuccessfulCounter;
-	uint32_t _writeAttemptsCounter;
-	uint32_t _writeSuccessfulCounter;
+	uint32_t _readAttemptsCounter = 0;
+	uint32_t _readSuccessfulCounter = 0;
+	uint32_t _writeAttemptsCounter = 0;
+	uint32_t _writeSuccessfulCounter = 0;
 
 
-	virtual void beginTransmission()
-	{
-		delayMicroseconds(180); //FIXME a communication reset time is necessary between 2 read/write accesses. Depends on the baudrate !
-	}
-
+	virtual void beginTransmission() {}
 	virtual void endTransmission() {}
 
 	virtual void uartFlushInput() = 0;
@@ -304,6 +302,8 @@ protected:
 	uint32_t _readReg(uint8_t address, ReadStatus *status);
 	void _writeReg(uint8_t address, uint32_t data);
 
+	void delayBitTimes(uint16_t bits);
+
 private:
 	static constexpr uint8_t SYNC_BYTE = 0x05;
 	static constexpr uint8_t MASTER_ADDRESS = 0xFF;
@@ -313,12 +313,17 @@ private:
 
 
 /* Arduino UART interface :
- * the TMC5160 SWSEL input must be tied high.
+ * the TMC5160 SD_MODE and SPI_MODE inputs must be tied low.
  *
  * This class does not handle TX/RX switch on the half-duplex bus.
  * It should be used only if there is another mechanism to switch between
  * transmission and reception (e.g. on Teensy the Serial class can be configured
- * to control an external transceiver).
+ * to control an external transceiver). 
+ * 
+ * It is not advised to use this class directly. Use TMC5160_UART_Transceiver instead
+ * as it provides a better control of the transceiver enable. The TMC5160 sometimes
+ * requires the bus to be in an stable state for a given duration (bus reset time) 
+ * before accepting commands.
  *
  * Serial must be initialized externally. Serial.setTimeout() must be set to a
  * decent value to avoid blocking for too long if there is a RX error.
@@ -327,8 +332,9 @@ class TMC5160_UART : public TMC5160_UART_Generic {
 public:
 	TMC5160_UART(Stream& serial = Serial, // Serial port to use
 		uint8_t slaveAddress = 0, // TMC5160 slave address (default 0 if NAI is low, 1 if NAI is high)
-		uint32_t fclk = DEFAULT_F_CLK) :
-		TMC5160_UART_Generic(slaveAddress, fclk), _serial(&serial)
+		uint32_t baudRate = 500000, // UART baud rate (necessary to compute certain delays)
+		uint32_t fclk = DEFAULT_F_CLK) : // TMC5160 clock freq 
+		TMC5160_UART_Generic(slaveAddress, baudRate, fclk), _serial(&serial)
 	{	}
 
 protected:
@@ -362,14 +368,11 @@ protected:
 };
 
 /* Arduino UART interface with external transceiver support :
- * the TMC5160 SWSEL input must be tied high.
+ * the TMC5160 SD_MODE and SPI_MODE inputs must be tied low.
  * See TMC5160 datasheet §5.4 figure 5.2 for wiring details
  *
  * This interface switches a digital pin to control an external transceiver to
  * free the bus when not transmitting.
- *
- * This is not optimized : the interface has to wait for the end of the
- * transmission.
  *
  * Serial must be initialized externally. Serial.setTimeout() must be set to a
  * decent value to avoid blocking for too long if there is a RX error.
@@ -379,8 +382,9 @@ public:
 	TMC5160_UART_Transceiver(uint8_t txEnablePin = -1, // pin to enable transmission on the external transceiver
 		Stream& serial = Serial, // Serial port to use
 		uint8_t slaveAddress = 0, // TMC5160 slave address (default 0 if NAI is low, 1 if NAI is high)
-		uint32_t fclk = DEFAULT_F_CLK)
-	: TMC5160_UART(serial, slaveAddress, fclk), _txEn(txEnablePin)
+		uint32_t baudRate = 500000, // UART baud rate (necessary to compute certain delays)
+		uint32_t fclk = DEFAULT_F_CLK) // TMC5160 clock freq 
+	: TMC5160_UART(serial, slaveAddress, baudRate, fclk), _txEn(txEnablePin)
 	{
 		pinMode(_txEn, OUTPUT);
 	}
@@ -388,8 +392,8 @@ public:
 protected:
 	void beginTransmission()
 	{
-		// TMC5160_UART::beginTransmission();
 		digitalWrite(_txEn, HIGH);
+		delayBitTimes(63+12+4); // Some ICs are more sensitive and need a communication reset time between 2 read/write accesses.
 	}
 
 	void endTransmission()

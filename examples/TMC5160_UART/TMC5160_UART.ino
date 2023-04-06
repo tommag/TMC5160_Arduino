@@ -3,11 +3,10 @@
 This code demonstrates the usage of a Trinamic TMC5160 stepper driver using its
 single-wire interface.
 
-Hardware setup :
 A RS485 transceiver must be connected to the Serial1 pins with the TX Enable pin
 accessible to the uC
 
-Tie the A output to the TMC5160 I/O voltage with a 1k resistor
+Tie the A output to the TMC5160 I/O voltage with a 1k resistor.
 
 The TMC5160 Enable line must be connected to GND to enable the driver.
 
@@ -18,18 +17,21 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
                                            +++        | |                 |
 +-----------+        +--------------+      | | 1k     +-+ SWSEL           |
 |           |        |              |      +++          |                 |
-|     RX 0 +--------+ RO           |       |           |                 |
-|           |        |            A +-------+-----------+ SWP         NAI ++ open
-|           |    +---+ /RE          |                   |                 |
-|  TX EN 5 +----+   |            B +-------------------+ SWN             |
+|      RX 0 +--------+ RO           |       |           |                 |
+|           |        |            A +-------+-----------+ SWP         NAI + ---|
+|           |    +---+ /RE          |                   |                 |    |
+|   TX EN 2 +----+   |            B +-------------------+ SWN             |    GND
 |           |    +---+ DE           |                   |                 |
 |           |        |          GND +----+         +----+ DRV_ENN         |
-|     TX 1 +--------+ DI           |    |         |    |                 |
+|      TX 1 +--------+ DI           |    |         |    |                 |
 |           |        |              |    +---------+----+ GND             |
 +-----------+        +--------------+                   +-----------------+
- Arduino                 MAX3485                              TMC5130
+Arduino / Teensy          MAX3485                              TMC5160
                        or equivalent
 
+Tie CLK16 to GND to use the TMC5160 internal clock.
+Tie SPI_MODE to GND, SD_MODE to GND for UART mode.
+Connect NAI to GND (address 0).
 
 Copyright (c) 2018-2021 Tom Magnier
 
@@ -56,8 +58,9 @@ SOFTWARE.
 #include <TMC5160.h>
 
 const uint8_t UART_TX_EN_PIN = 5;   // Differential transceiver TX enable pin
+const uint32_t UART_BAUDRATE = 500000; // UART baudrate : up to 750kbps with default TMC5160 clock
 
-TMC5160_UART_Transceiver motor = TMC5160_UART_Transceiver(UART_TX_EN_PIN, Serial1, 0); //Use Serial 1 ; address 0
+TMC5160_UART_Transceiver motor = TMC5160_UART_Transceiver(UART_TX_EN_PIN, Serial1, 0, UART_BAUDRATE); //Use Serial 1 ; address 0 (NAI LOW)
 
 
 void setup()

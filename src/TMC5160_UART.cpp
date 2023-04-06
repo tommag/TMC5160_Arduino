@@ -27,8 +27,8 @@ SOFTWARE.
 // #define SERIAL_PRINT_ERRORS
 // #define SERIAL_DEBUG
 
-TMC5160_UART_Generic::TMC5160_UART_Generic(uint8_t slaveAddress, uint32_t fclk)
-: TMC5160(fclk), _slaveAddress(slaveAddress), _currentMode(STREAMING_MODE)
+TMC5160_UART_Generic::TMC5160_UART_Generic(uint8_t slaveAddress, uint32_t baudRate, uint32_t fclk)
+: TMC5160(fclk), _slaveAddress(slaveAddress), _currentMode(STREAMING_MODE), _uartBaudRate(baudRate)
 {
 
 }
@@ -38,10 +38,6 @@ bool TMC5160_UART_Generic::begin(PowerStageParameters &powerParams, MotorParamet
 	CommunicationMode oldMode = _currentMode;
 	setCommunicationMode(RELIABLE_MODE);
 
-	// TMC5160_Reg::SLAVECONF_Register slaveConf = { 0 };
-	// slaveConf.senddelay = 2; // minimum if more than one slave is present.
-	// writeRegister(TMC5160_Reg::SLAVECONF, slaveConf.value);
-
 	bool result = TMC5160::begin(powerParams, motorParams, stepperDirection);
 	setCommunicationMode(oldMode);
 	return result;
@@ -50,7 +46,7 @@ bool TMC5160_UART_Generic::begin(PowerStageParameters &powerParams, MotorParamet
 uint32_t TMC5160_UART_Generic::readRegister(uint8_t address, ReadStatus *status)
 {
 	uint32_t data = 0xFFFFFFFF;
-	ReadStatus readStatus;
+	ReadStatus readStatus = NO_REPLY; //Worst case.
 
 	switch (_currentMode)
 	{
@@ -61,16 +57,12 @@ uint32_t TMC5160_UART_Generic::readRegister(uint8_t address, ReadStatus *status)
 		case RELIABLE_MODE:
 		{
 			int retries = NB_RETRIES_READ;
-			readStatus = NO_REPLY; //Worst case. If there is no reply for all retries this should be notified to the user.
 			do {
 				ReadStatus trialStatus;
 				data = _readReg(address, &trialStatus);
 
 				if (trialStatus == SUCCESS || (readStatus == NO_REPLY && trialStatus != NO_REPLY))
 					readStatus = trialStatus;
-
-				if (trialStatus == NO_REPLY)
-					resetCommunication();
 
 				retries--;
 			} while (readStatus != SUCCESS && retries > 0);
@@ -137,10 +129,9 @@ uint8_t TMC5160_UART_Generic::writeRegister(uint8_t address, uint32_t data, Read
 
 void TMC5160_UART_Generic::resetCommunication()
 {
-	//FIXME should take into account the previous baud rate !
-	// For now let's wait 1ms. The spec asks for ~75 bit times so this should be OK for baud rates > 75kbps
-	// as of now (09/2018) delay() is broken for small durations on ESP32. Use delayMicroseconds instead
-	delayMicroseconds(1000);
+	//Reset communication : see datasheet section 5.
+	//The bus must stay idle for 63 bit times then 12 bit times of recovery.
+	delayBitTimes(63 + 12 + 4); // add 4 bit times of margin
 
 #ifdef SERIAL_DEBUG
 	Serial.println("Resetting communication.");
@@ -215,7 +206,18 @@ uint32_t TMC5160_UART_Generic::_readReg(uint8_t address, ReadStatus *status)
 
 	unsigned long startTime = micros();
 	uint8_t rxLen = 0;
-	while (micros() - startTime < 1000 && rxLen < 8) //Timeout : 1ms TODO depends on the baudrate and the SENDDELAY parameter
+	// Timeout value : the TMC5160 starts replying 3*8 bit times after the transmission end (SENDDELAY = 2)
+	// Then 8 bytes are transmitted, each with its start and stop bits => 8*10 bit times
+	// => Timeout value : 3*8 + 8*10 + 10 (margin) bit times
+	unsigned long timeoutBits = 3*8 + 8*10 + 10;
+	// A higher margin is necessary for ESP32 as the UART peripheral inserts an idle time of 256 bits 
+	// between transmissions -> data is not pushed out immediately. 
+	// Worst case is an additionnal 256 bit delay - the transmission of the previous message (min 4 bytes => 40 bit times)
+#ifdef ESP_PLATFORM
+	timeoutBits += 216;
+#endif
+
+	while (micros() - startTime < (1000000ul * timeoutBits / _uartBaudRate) && rxLen < 8)
 	{
 		if (uartBytesAvailable() > 0)
 		{
@@ -337,6 +339,11 @@ void TMC5160_UART_Generic::_writeReg(uint8_t address, uint32_t data)
 	beginTransmission();
 	uartWriteBytes(buffer, 8);
 	endTransmission();
+}
+
+void TMC5160_UART_Generic::delayBitTimes(uint16_t bits)
+{
+	delayMicroseconds(1000000ul * bits / _uartBaudRate );
 }
 
 /* From Trinamic TMC5130A datasheet Rev. 1.14 / 2017-MAY-15 §5.2 */

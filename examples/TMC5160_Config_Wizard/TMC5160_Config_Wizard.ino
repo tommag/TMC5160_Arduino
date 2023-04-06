@@ -21,19 +21,20 @@ The TMC5160 Enable line must be connected to GND to enable the driver.
 +-----------+        +--------------+      | | 1k     +-+ SWSEL           |
 |           |        |              |      +++          |                 |
 |      RX 0 +--------+ RO           |       |           |                 |
-|           |        |            A +-------+-----------+ SWP         NAI ++ open
-|           |    +---+ /RE          |                   |                 |
-|   TX EN 2 +----+   |            B +-------------------+ SWN             |
+|           |        |            A +-------+-----------+ SWP         NAI + ---|
+|           |    +---+ /RE          |                   |                 |    |
+|   TX EN 2 +----+   |            B +-------------------+ SWN             |    GND
 |           |    +---+ DE           |                   |                 |
 |           |        |          GND +----+         +----+ DRV_ENN         |
 |      TX 1 +--------+ DI           |    |         |    |                 |
 |           |        |              |    +---------+----+ GND             |
 +-----------+        +--------------+                   +-----------------+
-Arduino / Teensy          MAX3485                              TMC5130
+Arduino / Teensy          MAX3485                              TMC5160
                        or equivalent
 
 Tie CLK16 to GND to use the TMC5160 internal clock.
 Tie SPI_MODE to GND, SD_MODE to GND for UART mode.
+Connect NAI to GND (address 0).
 
 ///// Option 2 : SPI
 Connect the following pins to the TMC5160 : 
@@ -75,6 +76,7 @@ SOFTWARE.
 #include <TMC5160.h>
 
 const uint8_t UART_TX_EN = 2;   // Differential transceiver TX enable pin
+const uint32_t UART_BAUDRATE = 500000; // UART baudrate : up to 750kbps with default TMC5160 clock
 const uint8_t SPI_CS = 5; // CS pin in SPI mode
 const uint8_t SPI_DRV_ENN = 8;  // DRV_ENN pin in SPI mode
 
@@ -211,17 +213,12 @@ void setup()
   else
   {
     // Init TMC serial bus @ 500kbps
-    Serial1.begin(500000);
+    Serial1.begin(UART_BAUDRATE);
     Serial1.setTimeout(2); // TMC5160 should answer back immediately when reading a register.
 
     TMC5160_UART_Generic * _motor; // Temp pointer for UART specific functions
-    //Use Serial1 (hardware UART on Feather M0/Teensy) ; address 0
-    #if defined(KINETISK) && 0
-    Serial1.transmitterEnable(UART_TX_EN);
-    _motor = new TMC5160_UART(Serial1, 0);
-    #else
-    _motor = new TMC5160_UART_Transceiver(UART_TX_EN, Serial1, 0);
-    #endif
+    //Use Serial1 (hardware UART on Feather M0/Teensy) ; address 0 (NAI LOW)
+    _motor = new TMC5160_UART_Transceiver(UART_TX_EN, Serial1, 0, UART_BAUDRATE);
     _motor->setCommunicationMode(TMC5160_UART::RELIABLE_MODE);
 
     motor = _motor;
