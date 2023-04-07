@@ -27,28 +27,19 @@ SOFTWARE.
 TMC5160_SPI::TMC5160_SPI( uint8_t chipSelectPin, uint32_t fclk, const SPISettings &spiSettings, SPIClass &spi )
 : TMC5160(fclk), _CS(chipSelectPin), _spiSettings(spiSettings), _spi(&spi)
 {
-	pinMode(chipSelectPin, OUTPUT);
-}
-
-
-// calls to read/write registers must be bracketed by the begin/endTransaction calls
-
-void _chipSelect( uint8_t pin, bool select )
-{
-	digitalWrite(pin, select?LOW:HIGH);
-	if( select )
-		delayMicroseconds(100);   // per spec, settling time is 100us
+	pinMode(_CS, OUTPUT);
+	digitalWrite(_CS, HIGH);
 }
 
 void TMC5160_SPI::_beginTransaction()
 {
 	_spi->beginTransaction(_spiSettings);
-	_chipSelect(_CS, true);
+	digitalWrite(_CS, LOW);
 }
 
 void TMC5160_SPI::_endTransaction()
 {
-	_chipSelect(_CS, false);
+	digitalWrite(_CS, HIGH);
 	_spi->endTransaction();
 }
 
@@ -63,11 +54,12 @@ uint32_t TMC5160_SPI::readRegister(uint8_t address)
 	_spi->transfer(0x00);
 	_endTransaction();
 
-	// skip a beat
-	#define nop() asm volatile("nop")
-	nop();
-	nop();
-	nop();
+	//Delay for the minimum CSN high time (2tclk + 10ns -> 176ns with the default 12MHz clock)
+	#ifdef TEENSYDUINO
+	delayNanoseconds(2 * 1000000000 / _fclk + 10);
+	#else
+	delayMicroseconds(1);
+	#endif
 
 	// read it in the second cycle
 	_beginTransaction();

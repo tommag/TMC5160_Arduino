@@ -193,9 +193,9 @@ protected:
 	static constexpr uint8_t WRITE_ACCESS = 0x80;	//Register write access for spi / uart communication
 
 	bool _lastRegisterReadSuccess = false;
+	const uint32_t _fclk;
 
 private:
-	uint32_t _fclk;
 	RampMode _currentRampMode;
 	static constexpr uint16_t _uStepCount = 256; // Number of microsteps per step
 	TMC5160_Reg::CHOPCONF_Register _chopConf = { 0 }; //CHOPCONF register (saved here to be restored when disabling / enabling driver)
@@ -221,7 +221,7 @@ class TMC5160_SPI : public TMC5160 {
 public:
 	TMC5160_SPI( uint8_t chipSelectPin,	// pin to use for the SPI bus SS line
 		uint32_t fclk = DEFAULT_F_CLK,
-		const SPISettings &spiSettings = SPISettings(1000000, MSBFIRST, SPI_MODE3), // spi bus settings to use
+		const SPISettings &spiSettings = SPISettings(4000000, MSBFIRST, SPI_MODE3), // spi bus settings to use (max SCK frequency of 4Mhz)
 		SPIClass& spi = SPI ); // spi class to use
 
 	uint32_t readRegister(uint8_t address);	// addresses are from TMC5160.h
