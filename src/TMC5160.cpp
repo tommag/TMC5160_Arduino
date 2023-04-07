@@ -95,7 +95,10 @@ bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParamete
 	writeRegister(TMC5160_Reg::GCONF, gconf.value);
 
 	//Set default start, stop, threshold speeds.
-	setRampSpeeds(0, 0.1, 0); //Start, stop, threshold speeds */
+	setRampSpeeds(0, 0.1, 0); //Start, stop, threshold speeds 
+
+	//Set default D1 (must not be = 0 in positioning mode even with V1=0)
+	writeRegister(TMC5160_Reg::D_1, 100);
 
 	return false;
 }
@@ -231,7 +234,8 @@ void TMC5160::setRampSpeeds(float startSpeed, float stopSpeed, float transitionS
 
 void TMC5160::setAcceleration(float maxAccel)
 {
-	setAccelerations(maxAccel, maxAccel, maxAccel, maxAccel);
+	writeRegister(TMC5160_Reg::AMAX, min(0xFFFF, accelFromHz(fabs(maxAccel)))); // AMAX, DMAX: 16 bits
+	writeRegister(TMC5160_Reg::DMAX, min(0xFFFF, accelFromHz(fabs(maxAccel))));
 }
 
 void TMC5160::setAccelerations(float maxAccel, float maxDecel, float startAccel, float finalDecel)
