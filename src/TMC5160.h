@@ -189,6 +189,34 @@ public:
 	 */
 	void setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFilter, int shortDelay = 0);
 
+	/*
+	 * Get the value of the stall guard result register SG_RESULT.
+	 * See $13.1, p. 88 in the "TMC5160 / TMC5160A DATASHEET"
+	 */
+	int getStallGuardResult();
+
+	/*
+	 * Set the stall guard threshold.
+	 */
+	void setStallGuardThreshold(int threshold);
+	
+	/*
+	 * Enable automatic stop of the motors when the getStallGuardResult reaches zero.
+	 * @param enable When true, stop. When false, motors continue running even when a stall is detected.
+	 */
+	void enableStallGuardStop(bool enable);
+
+	/*
+	 * Whether there are stall guard events.
+	 */ 
+	bool hasStallGuardEvent();
+
+	/*
+	 * Get the current stall guard threshold.
+	 */
+	int getStallGuardThreshold();
+
+
 protected:
 	static constexpr uint8_t WRITE_ACCESS = 0x80;	//Register write access for spi / uart communication
 

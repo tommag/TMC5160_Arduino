@@ -457,3 +457,37 @@ void TMC5160::setShortProtectionLevels(int s2vsLevel, int s2gLevel, int shortFil
 
 	writeRegister(TMC5160_Reg::SHORT_CONF, shortConf.value);
 }
+
+int TMC5160::getStallGuardResult() {
+        TMC5160_Reg::DRV_STATUS_Register drvStatus = {0};
+        drvStatus.value = readRegister(TMC5160_Reg::DRV_STATUS);
+        return drvStatus.sg_result;
+}
+
+bool TMC5160::hasStallGuardEvent() {
+        TMC5160_Reg::RAMP_STAT_Register rampStat = {0};
+        rampStat.value = readRegister(TMC5160_Reg::RAMP_STAT);
+        return rampStat.status_sg ? true : false;
+}
+
+void TMC5160::enableStallGuardStop(bool enable) {
+        TMC5160_Reg::SW_MODE_Register swMode = {0};
+        swMode.value = readRegister(TMC5160_Reg::SW_MODE);
+        swMode.sg_stop = constrain(1, 0, 1);
+        writeRegister(TMC5160_Reg::SW_MODE, swMode.value);
+}
+
+void TMC5160::setStallGuardThreshold(int threshold) {
+        TMC5160_Reg::COOLCONF_Register coolConf = {0};
+        coolConf.value = readRegister(TMC5160_Reg::COOLCONF);
+        // coolConf.sgt    = constrain(threshold, -64, 63);
+        coolConf.sgt    = constrain(threshold, 0, 127);
+		// Serial.println(coolConf.sgt);
+        writeRegister(TMC5160_Reg::COOLCONF, coolConf.value);
+}
+
+int TMC5160::getStallGuardThreshold() {
+        TMC5160_Reg::COOLCONF_Register coolConf = {0};
+        coolConf.value = readRegister(TMC5160_Reg::COOLCONF);
+        return coolConf.sgt;
+}
